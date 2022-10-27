@@ -5,6 +5,17 @@
 // drive classname(interrupt freq, motor res)
 drive step1(976.5, 200);
 drive step2(976.5, 200);
+volatile boolean motStop = true;
+
+// sensor
+#define senseAV 51.f
+#define vmAV 3.55f
+#define vccAV 1.25f
+#define rSen 0.01f
+#define getSense1 ((analogRead(A4) / 1024.f * 5.f) / senseAV) / rSen
+#define getSense2 ((analogRead(A5) / 1024.f * 5.f) / senseAV) / rSen
+#define getVM     analogRead(A7) / 1024.f * 5.f * vmAV
+#define getVCC    analogRead(A6) / 1024.f * 5.f * vccAV
 
 ISR(TIMER1_OVF_vect)  
 {   
@@ -33,7 +44,7 @@ ISR(TIMER2_OVF_vect)
 void drive1(int spd, int duty)
 {
   duty = constrain(duty, 0, 255);
-  if(spd == 0 || duty == 0) 
+  if(motStop) 
   {
     enable_AB(false);  
   }
@@ -57,7 +68,7 @@ void drive1(int spd, int duty)
 void drive2(int spd, int duty)
 {
   duty = constrain(duty, 0, 255);
-  if(spd == 0 || duty == 0) 
+  if(motStop) 
   {
     enable_CD(false);  
   }
@@ -85,7 +96,6 @@ void setup()
   
   // output initialize
   outPinInit();
-  
 }
 
 // serial commu
@@ -100,13 +110,28 @@ void serialEvent()
     {
       dataBuf[i] = Serial.parseInt();         
     }
-    drive1(dataBuf[0], dataBuf[1]);
-    drive2(dataBuf[2], dataBuf[3]);
+    if(dataBuf[4] == 0 || dataBuf[4] == 1)
+    {
+      motStop = dataBuf[4]? false: true; 
+      drive1(dataBuf[0], dataBuf[1]);
+      drive2(dataBuf[2], dataBuf[3]);
+    }
+    else if(dataBuf[4] == 2)  
+      Serial.println("@," + 
+                      String(getSense1) + "," + 
+                      String(getSense2) + "," +
+                      String(getVM)     + "," +
+                      String(getVCC)    + ",#"
+                    );
     Serial.flush();
+    for(int i=0; i<bufSize; i++)
+    {
+      dataBuf[i] = 0;         
+    }
   }
 }
 
 void loop() 
-{  
-  
+{
+    
 }
